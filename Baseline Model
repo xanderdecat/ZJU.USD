@@ -9,8 +9,8 @@ import cv2
 ## PART 1: DETECTING FACES
 
 # Directory paths
-image_dir = "/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/archive-2/images"
-annot_dir = "/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/archive-2/annotations"
+image_dir = "XXX...XXX"
+annot_dir = "XXX...XXX"
 
 # Parse XML and retrieve bounding boxes
 def parse_annotation(annot_path):
@@ -99,7 +99,7 @@ model.fit(X, y, epochs=10, validation_split=0.1, batch_size=32)
 test_image_name = ("Testphoto5.jpg")
 
 # Load the image
-test_image_path = "/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/" + test_image_name
+test_image_path = "XXX...XXX" + test_image_name
 test_image = Image.open(test_image_path)
 
 plt.imshow(test_image)

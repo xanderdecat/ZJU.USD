@@ -1,0 +1,97 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load the dataset
+file_path = "/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/vaccination_all_tweets.csv"
+df = pd.read_csv(file_path)
+
+# Extract column names and their data types
+column_data_types = df.dtypes
+
+# Print column names and their data types
+print(column_data_types)
+
+# Number of rows and columns
+print(f"Number of rows: {df.shape[0]}")
+print(f"Number of columns: {df.shape[1]}")
+
+# Missing values in each column
+missing_values = df.isnull().sum()
+print("\nMissing values in each column:")
+print(missing_values)
+
+# Basic statistics for numerical columns
+numerical_stats = df.describe()
+print("\nBasic statistics for numerical columns:")
+print(numerical_stats)
+
+
+### BASIC INSIGHTS
+
+## Descriptives
+# Descriptive stats
+print(df.describe(include='all'))
+
+# Verified vs. non-verified users
+sns.countplot(data=df, x='user_verified')
+plt.title('Verified vs. Non-Verified Users')
+plt.show()
+
+## Temporal Analysis
+# Convert 'date' column to datetime format
+df['date'] = pd.to_datetime(df['date'])
+
+# Tweets over time
+df.groupby(df['date'].dt.date).size().plot(kind='line')
+plt.title('Tweets Over Time')
+plt.show()
+
+# Peak times
+df.groupby(df['date'].dt.hour).size().plot(kind='bar')
+plt.title('Tweets by Hour of Day')
+plt.show()
+
+## Location analysis
+
+# Count the number of occurrences for each location
+location_counts = df['user_location'].value_counts()
+
+# Calculate the cumulative count
+location_counts_cumulative = location_counts.cumsum()
+
+# Find the locations until the cumulative count reaches 115000
+most_mentioned_locations = location_counts_cumulative[location_counts_cumulative <= 115000]
+
+# Reset rank and get individual counts again
+rank = 1
+location_counts = df['user_location'].value_counts()
+
+# Calculate the cumulative count
+location_counts_cumulative = location_counts.cumsum()
+
+# Find the locations until the cumulative count reaches 115000
+most_mentioned_locations = location_counts_cumulative[location_counts_cumulative <= 115000]
+
+# Iterate over the Series and print each location with its rank, count, and cumulative count
+for location in most_mentioned_locations.index:
+    individual_count = location_counts[location]
+    cumulative_count = most_mentioned_locations[location]
+    print(f'Rank {rank}: {location} - Count: {individual_count} - Cumulative Count: {cumulative_count}')
+    rank += 1
+
+
+
+
+# Top locations
+top_locations = df['user_location'].value_counts().head(10)
+top_locations.plot(kind='barh')
+plt.title('Top 10 Locations Tweeting about Vaccines')
+plt.show()
+
+## Device analysis
+# Top sources
+top_sources = df['source'].value_counts().head(10)
+top_sources.plot(kind='barh')
+plt.title('Top 10 Tweet Sources')
+plt.show()

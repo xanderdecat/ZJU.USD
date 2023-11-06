@@ -1,0 +1,50 @@
+# This file performs the sentiment analysis and creates a new file with the senitments added.
+
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from textblob import TextBlob
+
+
+# Step 1: Reading the CSV File
+df = pd.read_csv('/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/vaccination_all_tweets.csv')
+
+# Print all column names
+print(df.columns.tolist())
+
+# Print the data type in every column
+print(df.dtypes)
+
+## Sentiment Analysis
+# nltk.download('punkt')
+# nltk.download('averaged_perceptron_tagger')
+
+# Function to categorize polarity
+def get_sentiment(polarity):
+    if polarity > 0:
+        return 'positive'
+    elif polarity < 0:
+        return 'negative'
+    else:
+        return 'neutral'
+
+# Applying TextBlob on each tweet and extracting polarity
+df['sentiment'] = df['text'].apply(lambda tweet: TextBlob(tweet).sentiment.polarity)
+df['sentiment_category'] = df['sentiment'].apply(get_sentiment)
+
+# Display the count of each sentiment category
+print(df['sentiment_category'].value_counts())
+
+# Get counts of each sentiment category
+sentiment_counts = df['sentiment_category'].value_counts()
+
+# Save the updated DataFrame to a new CSV file
+df.to_csv('/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/vaccination_all_tweets_with_sentiment.csv', index=False)
+
+# Create a bar plot
+sentiment_counts.plot(kind='bar', color=['blue', 'green', 'red'])
+plt.title('Sentiment Distribution')
+plt.xlabel('Sentiment')
+plt.ylabel('Number of Tweets')
+plt.xticks(rotation=0)
+plt.show()

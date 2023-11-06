@@ -1,0 +1,143 @@
+import pandas as pd
+
+# File paths
+file_path = "/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis"
+input_file = f"{file_path}/vaccination_all_tweets_with_sentiment.csv"
+output_file = f"{file_path}/vaccination_all_tweets_with_sentiment_and_country.csv"
+
+# Read the dataset
+df = pd.read_csv(input_file)
+
+# Location to country mapping
+location_to_country = {
+    'Bengaluru, India': 'India',
+    'India': 'India',
+    'New Delhi, India': 'India',
+    'Toronto, Canada and Worldwide': 'Canada',
+    'United States': 'United States of America',
+    'Mumbai, India': 'India',
+    'New Delhi': 'India',
+    'Sri Lanka': 'Sri Lanka',
+    'Beijing, China': 'China',
+    'Mumbai': 'India',
+    'Los Angeles, CA': 'United States of America',
+    'Canada': 'Canada',
+    'Toronto, Ontario': 'Canada',
+    'London': 'United Kingdom',
+    'London, England': 'United Kingdom',
+    'Hyderabad, India': 'India',
+    'California, USA': 'United States of America',
+    'Chennai, India': 'India',
+    'Beijing': 'China',
+    'Malaysia': 'Malaysia',
+    'USA': 'United States of America',
+    'United Kingdom': 'United Kingdom',
+    'Pakistan': 'Pakistan',
+    'Colombo, Sri Lanka': 'Sri Lanka',
+    'Moscow, Russia': 'Russia',
+    'Washington, DC': 'United States of America',
+    'Estados Unidos': 'United States of America',
+    'New York, NY': 'United States of America',
+    'Delhi': 'India',
+    'Hyderabad': 'India',
+    'Pune, India': 'India',
+    'Michigan, USA': 'United States of America',
+    'Chennai': 'India',
+    'Hong Kong': 'Hong Kong',
+    'Singapore': 'Singapore',
+    'New York, USA': 'United States of America',
+    'California, United States': 'United States of America',
+    'Australia': 'Australia',
+    'Beijing, China': 'China',
+    'Bangalore': 'India',
+    'Kolkata, India': 'India',
+    'New Delhi, Delhi': 'India',
+    'Karachi, Pakistan': 'Pakistan',
+    'Chicago, IL': 'United States of America',
+    'Moscow, Russia': 'Russia',
+    'Republic of the Philippines': 'Philippines',
+    'South Africa': 'South Africa',
+    'United Arab Emirates': 'United Arab Emirates',
+    'Houston, TX': 'United States of America',
+    'Dhaka, Bangladesh': 'Bangladesh',
+    'Türkiye': 'Turkey',
+    'Dublin, Ireland': 'Ireland',
+    'Lahore, Pakistan': 'Pakistan',
+    'भारत': 'India',
+    'Islamabad, Pakistan': 'Pakistan',
+    'Florida, USA': 'United States of America',
+    'Philippines': 'Philippines',
+    'Qatar': 'Qatar',
+    'Toronto': 'Canada',
+    'Gurgaon, India': 'India',
+    'Atlanta, GA': 'United States of America',
+    'Boston, MA': 'United States of America',
+    'UK': 'United Kingdom',
+    'Nairobi, Kenya': 'Kenya',
+    'New York': 'United States of America',
+    'Bhubaneshwar, India': 'India',
+    'Bengaluru': 'India',
+    'Ontario, Canada': 'Canada',
+    'San Francisco, CA': 'United States of America',
+    'Jaipur, India': 'India',
+    'Guwahati, India': 'India',
+    'France': 'France',
+    'Los Angeles': 'United States of America',
+    'Dubai, United Arab Emirates': 'United Arab Emirates',
+    '北京, 中华人民共和国': 'China',
+    'Noida, India': 'India',
+    'England, United Kingdom': 'United Kingdom',
+    'Texas, USA': 'United States of America',
+    'Bangkok, Thailand': 'Thailand',
+    'Seattle, WA': 'United States of America',
+    'Delhi, India': 'India',
+    'Thailand': 'Thailand',
+    'Gujarat, India': 'India',
+    'Bharat': 'India',
+    'Bangladesh': 'Bangladesh',
+    # Handling "San Jose" separately due to multiple possible countries
+    'Vancouver, British Columbia': 'Canada',
+    'Melbourne, Victoria': 'Australia',
+    'Kharar (S.A.S. Nagar, Mohali)': 'India',
+    'Metro Manila, the Philippines': 'Philippines',
+    'Austin, TX': 'United States of America',
+    'Pune': 'India',
+    'Toronto, Canada': 'Canada',
+    'Philadelphia, PA': 'United States of America',
+    'San Diego, CA': 'United States of America',
+    'Tokyo, Japan': 'Japan',
+    'Dubai': 'United Arab Emirates',
+    'india': 'India',
+    'Italia': 'Italy',
+    'Leeds, England': 'United Kingdom',
+    'Paris, France': 'France',
+    'Germany': 'Germany',
+    'Tamil Nadu, India': 'India',
+    'Chandigarh': 'India',
+    'London, UK': 'United Kingdom',
+    'Southern Cal': 'United States of America',
+    'New York City': 'United States of America',
+    'Trincomalee, Sri Lanka': 'Sri Lanka'
+}
+
+# Function to map location to country
+def map_location_to_country(location):
+    if pd.isnull(location):
+        return None
+    for key in location_to_country:
+        if key.lower() in location.lower():
+            return location_to_country[key]
+    # Special case for San Jose
+    if 'san jose' in location.lower():
+        return 'United States'  # Defaulting to United States
+    return None
+
+# Apply the function to create a new column 'user_country'
+df['user_country'] = df['user_location'].apply(map_location_to_country)
+
+# Filter the DataFrame to only include rows where 'user_country' is not null
+filtered_df = df.dropna(subset=['user_country'])
+
+# Save the new dataset
+filtered_df.to_csv(output_file, index=False)
+

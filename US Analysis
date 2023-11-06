@@ -1,0 +1,432 @@
+import numpy as np
+import pandas as pd
+import re
+from collections import Counter
+from wordcloud import WordCloud, STOPWORDS
+from textblob import TextBlob
+import plotly.express as px
+import seaborn as sns
+import matplotlib.dates as mdates
+from scipy.stats import linregress
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
+
+### GENERAL OVERVIEW
+# Reading the CSV File
+df = pd.read_csv('/Users/xanderdecat/Documents/UGent Master BE FIN/Zheijang University/Courses/Unstructured Data Analysis/vaccination_all_tweets_with_sentiment_and_country.csv')
+
+# Print all column names
+print(df.columns.tolist())
+
+# Print the data type in every column
+print(df.dtypes)
+
+# Number of rows and columns
+print(f"Number of rows: {df.shape[0]}")
+print(f"Number of columns: {df.shape[1]}")
+
+# Number of unique users
+unique_users = df['user_name'].nunique()
+print(f"Number of unique users: {unique_users}")
+
+# Convert the 'date' column to datetime format (if you haven't already done so)
+df['date'] = pd.to_datetime(df['date'])
+
+# Resample by week and count the number of tweets
+tweets_per_week = df.resample('W-Mon', on='date').size()
+
+# Plotting the weekly average
+plt.figure(figsize=(6, 5))
+sns.lineplot(x=tweets_per_week.index, y=tweets_per_week.values, marker='o')  # marker='o' adds points on the line
+plt.title('Average Number of Tweets Posted Weekly')
+plt.xlabel('Month')
+plt.ylabel('Number of Tweets')
+
+# Set major ticks format for every month
+ax = plt.gca()  # Get current axis
+ax.xaxis.set_major_locator(mdates.MonthLocator())  # Major ticks at the start of each month
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))  # Format as 'Month Year' for major ticks
+
+# Rotate and align the tick labels so they look better
+plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")  # Rotate major ticks
+
+plt.tight_layout()  # Adjust the layout
+plt.show()
+
+
+### WORD CLOUD
+## 20 most used words
+# 1. Data Cleaning
+def clean_text(text):
+    # Remove URLs
+    text = re.sub(r"http\S+|www\S+|https\S+", '', text, flags=re.MULTILINE)
+    # Remove mentions, hashtags, and punctuation
+    text = re.sub(r'\@\w+|\#|\W+', ' ', text)
+    # Convert to lowercase for consistency
+    return text.lower()
+
+# Combine all tweets into one big text and clean it
+all_tweets = df['text'].str.cat(sep=' ').lower()
+cleaned_tweets = clean_text(all_tweets)
+
+# 2. Tokenize and Filter out stop words
+words = [word for word in cleaned_tweets.split() if word not in STOPWORDS]
+
+# 3. Count
+word_count = Counter(words)
+
+# Display the most common words
+for word, count in word_count.most_common(20):  # Adjust the number to display more or less common words
+    print(f'{word}: {count}')
+
+## WordCloud
+# Generate the word cloud
+wordcloud = WordCloud(width=1000, height=200, background_color='white').generate_from_frequencies(word_count)
+
+# Display the word cloud using matplotlib
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.tight_layout()  # Adjust the layout
+plt.show()
+
+
+### SENTIMENT ANALYSIS PLOTS
+# Plotting the distribution of sentiment polarity
+plt.figure(figsize=(8, 6))
+plt.hist(df['sentiment'], bins=50, color='skyblue', alpha=0.7)
+plt.title('Distribution of Sentiment Polarity')
+plt.xlabel('Sentiment Polarity')
+plt.ylabel('Number of Tweets')
+plt.show()
+
+# Getting the counts of each sentiment category
+sentiment_counts = df['sentiment_category'].value_counts()
+
+# Reordering the categories and assigning colors
+ordered_categories = ['negative', 'neutral', 'positive']
+colors = ['red', 'orange', 'green']
+
+# Creating a new Series with the ordered categories
+ordered_counts = pd.Series([sentiment_counts[category] for category in ordered_categories], index=ordered_categories)
+
+# Display the count of each sentiment category
+print(df['sentiment_category'].value_counts())
+
+# Plotting the count of each sentiment category
+plt.figure(figsize=(4, 8))
+bars = plt.bar(ordered_counts.index, ordered_counts.values, color=colors)
+
+# Adding the title and labels
+plt.title('Count of Sentiment Categories')
+plt.xlabel('Sentiment Category')
+plt.ylabel('Number of Tweets')
+plt.xticks(rotation=0)
+
+# Calculate the total number of tweets for percentage computation
+total_tweets = ordered_counts.sum()
+
+# Add percentages on top of the bars
+for bar in bars:
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval + 0.01 * total_tweets, f'{yval/total_tweets:.2%}', ha='center', va='bottom')
+
+# Show the plot with percentages
+plt.tight_layout()
+plt.show()
+
+### ADVANCED SENTIMENT INSIGHTS
+
+
+## 1. Top countries for posts
+# Count the occurrences of each country
+country_counts = df['user_country'].value_counts()
+
+# Select the top N countries
+top_n = 10
+top_countries = country_counts.head(top_n)
+
+# Plot the data
+plt.figure(figsize=(6, 5))
+top_countries.plot(kind='bar', color='skyblue')
+plt.title('Top {} Countries by Number of Tweets'.format(top_n))
+plt.xlabel('Country')
+plt.ylabel('Number of Tweets')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Count how many different countries there are
+unique_countries_count = df['user_country'].nunique()
+print(f"There are {unique_countries_count} different countries in the dataset.")
+
+
+## 2. Top countries per sentiment
+# Group the data by country and calculate the mean sentiment
+country_sentiment_avg = df.groupby('user_country')['sentiment'].mean().sort_values(ascending=False)
+
+# Get the top 10 countries with the highest average sentiment scores
+top_10_positive = country_sentiment_avg.head(10).reset_index()
+
+# Get the top 10 countries with the highest average sentiment scores
+top_10_negative = country_sentiment_avg.tail(10).reset_index()
+
+# Sort the average sentiment in ascending order and get the top 10 countries with the lowest average sentiment scores
+top_10_negative_asc = country_sentiment_avg.sort_values(ascending=True).head(10).reset_index()
+
+# Print the results
+print("Top 10 Most Positive Countries:")
+print(top_10_positive)
+
+print("\nTop 10 Least Positive Countries:")
+print(top_10_negative_asc)
+
+# Create a new DataFrame with the '...' row
+separator_row = pd.DataFrame({'user_country': ['...'], 'sentiment': [0]})
+
+# Combine the two DataFrames and the separator row into one
+combined_top_10 = pd.concat([top_10_positive, separator_row, top_10_negative]).reset_index(drop=True)
+
+# Generate a color list from red to green (reverse of RdYlGn)
+n = len(combined_top_10)
+colors = [plt.cm.RdYlGn_r(x) for x in np.linspace(0, 1, n)]
+
+# Plotting
+plt.figure(figsize=(4, 8))
+sns.barplot(x='sentiment', y='user_country', data=combined_top_10, palette=colors)
+plt.title('Top 10 Most and Least Positive Countries')
+plt.xlabel('Average Sentiment Score (ASS)')
+plt.ylabel('Country')
+plt.tight_layout()
+plt.show()
+
+# Load a GeoDataFrame containing country shapes
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+
+# Rename the column for a successful merge, if necessary
+world = world.rename(columns={'name': 'user_country'})
+
+# Merge the GeoDataFrame with your country sentiment DataFrame
+merged = world.set_index('user_country').join(country_sentiment_avg)
+
+# Generate a colormap from red to green (reverse of RdYlGn)
+colormap = mcolors.LinearSegmentedColormap.from_list("", ["red", "yellow", "green"])
+
+# Plotting
+fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+divider = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=merged['sentiment'].min(), vmax=merged['sentiment'].max()), cmap=colormap)
+
+merged.plot(column='sentiment', ax=ax, legend=True,
+            legend_kwds={'label': "Average Sentiment Score (ASS)",
+                         'orientation': "horizontal"},
+            missing_kwds={'color': 'lightgrey', "label": "Missing values"},
+            cmap=colormap)
+
+plt.title('Average Sentiment Score per Country')
+plt.show()
+
+## 3. Time series about sentiment
+# Convert the 'date' column to datetime format
+df['date'] = pd.to_datetime(df['date'])
+
+# Group by date and calculate the average sentiment
+sentiment_over_time = df.groupby(df['date'].dt.date)['sentiment'].mean()
+
+# Plotting
+plt.figure(figsize=(10, 5))
+sns.lineplot(x=sentiment_over_time.index, y=sentiment_over_time.values)
+plt.title('Sentiment Over Time')
+plt.xlabel('Date')
+plt.ylabel('Average Sentiment Score')
+plt.xticks(rotation=45)  # Rotate the x-axis labels for better readability
+plt.tight_layout()  # Adjust the layout
+plt.show()
+
+# Resample by week and calculate the average sentiment
+sentiment_over_time_weekly = df.resample('W', on='date')['sentiment'].mean()
+
+# Plotting for weekly resampled data with markers
+plt.figure(figsize=(10, 5))  # Increase the figure size for better clarity
+sns.lineplot(x=sentiment_over_time_weekly.index, y=sentiment_over_time_weekly.values, marker='o')  # Add marker='o'
+plt.title('Sentiment Over Time (Weekly Average)')
+plt.xlabel('Date')
+plt.ylabel('Average Sentiment Score')
+
+# Set major ticks format for every month
+ax = plt.gca()  # Get current axis
+ax.xaxis.set_major_locator(mdates.MonthLocator())  # Major ticks at the start of each month
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))  # Format as 'Month Year' for major ticks
+
+# Rotate and align the tick labels so they look better
+plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")  # Rotate major ticks
+
+plt.tight_layout()  # Adjust the layout
+plt.show()
+
+
+## 3. Hashtag analysis
+# 1. Extract hashtags and clean
+all_hashtags = df['hashtags'].dropna().str.cat(sep=',').lower()
+# Remove special characters and split
+hashtags_list = re.sub(r'\W+', ' ', all_hashtags).split()
+
+# 2. Count
+hashtag_count = Counter(hashtags_list)
+
+# Display the most common hashtags
+print("Most common hashtags:")
+for hashtag, count in hashtag_count.most_common(20):  # Adjust the number to display more or less common words
+    print(f'{hashtag}: {count}')
+
+# 3. Plotting the most common hashtags
+most_common_hashtags = pd.DataFrame(hashtag_count.most_common(20), columns=['Hashtag', 'Count'])
+
+plt.figure(figsize=(6, 5))
+sns.barplot(x='Count', y='Hashtag', data=most_common_hashtags, palette='viridis')
+plt.title('Top 20 Most Common Hashtags')
+plt.xlabel('Count')
+plt.ylabel('Hashtag')
+plt.tight_layout()  # Adjust the layout
+plt.show()
+
+# Extract all hashtags
+all_hashtags = df['hashtags'].dropna().str.cat(sep=',').lower()
+
+# Split and create a list of hashtags
+hashtags_list = all_hashtags.split(',')
+
+# Remove duplicates by converting the list to a set, then count the unique elements
+unique_hashtags_count = len(set(hashtags_list))
+
+print(f"There are {unique_hashtags_count} unique hashtags in the dataset.")
+
+
+## 4. Source analysis
+# Display the top 10 sources
+top_10_sources = df['source'].value_counts().head(10)
+print("Top 10 Sources:")
+print(top_10_sources)
+
+# Plot the top 10 sources
+plt.figure(figsize=(6, 5))
+top_10_sources.plot(kind='bar', color='skyblue')
+plt.title('Top 10 Tweet Sources')
+plt.xlabel('Source')
+plt.ylabel('Number of Tweets')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.show()
+
+# Count how many different sources there are
+unique_sources_count = df['source'].nunique()
+print(f"There are {unique_sources_count} different sources in the dataset.")
+
+
+## 5. Vaccine brand sentiment
+# Define the vaccine brands
+vaccine_brands = [
+    'Pfizer/BioNTech', 'Sinopharm', 'Sinovac',
+    'Moderna', 'Oxford/AstraZeneca', 'Covaxin', 'Sputnik V'
+]
+
+# Function to identify vaccine brands mentioned in the tweet or hashtags
+def identify_vaccine_brands(row):
+    brands_mentioned = []
+    # Convert NaN to empty string and then lower the case
+    text = (str(row['text']) + " " + str(row['hashtags'])).lower()
+    for brand in vaccine_brands:
+        # Escape any special characters for regex, and search case-insensitively
+        pattern = re.escape(brand.lower())
+        if re.search(pattern, text):
+            brands_mentioned.append(brand)
+    return brands_mentioned
+
+# Apply the function to the dataframe
+df['vaccines_mentioned'] = df.apply(identify_vaccine_brands, axis=1)
+# Initialize a dictionary to hold sentiment scores
+vaccine_sentiments = {brand: [] for brand in vaccine_brands}
+
+# Loop through the dataframe and add sentiment scores to the corresponding brands
+for index, row in df.iterrows():
+    for brand in row['vaccines_mentioned']:
+        vaccine_sentiments[brand].append(row['sentiment'])
+
+# Calculate the average sentiment for each brand
+vaccine_sentiment_overview = {}
+for brand, sentiments in vaccine_sentiments.items():
+    if sentiments:
+        average_sentiment = sum(sentiments) / len(sentiments)
+        vaccine_sentiment_overview[brand] = average_sentiment
+    else:
+        vaccine_sentiment_overview[brand] = None
+
+# Display the result
+for brand, sentiment in vaccine_sentiment_overview.items():
+    print(f'{brand}: {sentiment}')
+
+# Define the vaccine brands
+vaccine_brands = [
+    'Pfizer/BioNTech', 'Sinopharm', 'Sinovac',
+    'Moderna', 'Oxford/AstraZeneca', 'Covaxin', 'Sputnik V'
+]
+
+# Function to identify vaccine brands mentioned in the tweet or hashtags
+def identify_vaccine_brands(row):
+    brands_mentioned = []
+    text = (str(row['text']) + " " + str(row['hashtags'])).lower()
+    for brand in vaccine_brands:
+        if brand.lower() in text:
+            brands_mentioned.append(brand)
+    return brands_mentioned
+
+# Apply the function to the dataframe
+df['vaccines_mentioned'] = df.apply(identify_vaccine_brands, axis=1)
+
+# Initialize a dictionary to hold sentiment scores
+vaccine_sentiments = {brand: [] for brand in vaccine_brands}
+
+# Loop through the dataframe and add sentiment scores to the corresponding brands
+for index, row in df.iterrows():
+    for brand in row['vaccines_mentioned']:
+        vaccine_sentiments[brand].append(row['sentiment'])
+
+# Calculate the average sentiment for each brand, excluding NaN values
+vaccine_sentiment_overview = {
+    brand: np.nanmean(sentiments) if sentiments else None
+    for brand, sentiments in vaccine_sentiments.items()
+}
+
+# Convert the sentiment overview dictionary to a DataFrame for plotting
+vaccine_sentiment_df = pd.DataFrame(list(vaccine_sentiment_overview.items()), columns=['Vaccine Brand', 'Average Sentiment'])
+
+# Drop the rows with None values
+vaccine_sentiment_df.dropna(inplace=True)
+
+# Sort the DataFrame based on sentiment values, highest to lowest
+vaccine_sentiment_df.sort_values(by='Average Sentiment', ascending=False, inplace=True)
+
+# Generate a color list from red to green (reverse of RdYlGn)
+colors = [plt.cm.RdYlGn_r(x) for x in np.linspace(0, 1, len(vaccine_sentiment_df))]
+
+# Set the style
+sns.set(style="whitegrid")
+
+# Initialize the matplotlib figure
+plt.figure(figsize=(13, 6))
+
+# Create a barplot with the generated colors
+ax = sns.barplot(x='Average Sentiment', y='Vaccine Brand', data=vaccine_sentiment_df, palette=colors)
+
+# Set the title and labels
+ax.set_title('Average Sentiment Scores for COVID-19 Vaccine Brands')
+ax.set_xlabel('Average Sentiment Score')
+ax.set_ylabel('Vaccine Brand')
+
+# Remove the left spine for a cleaner look
+sns.despine(left=True, bottom=True)
+
+# Show the plot
+plt.tight_layout()
+plt.show()
